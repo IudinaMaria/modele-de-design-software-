@@ -98,7 +98,9 @@ public sealed class TypedKey<T>
 }
 ```
 
-Это generic-обёртка для int-ключа.
+- тип ключа строго определён через `T`
+- исключает возможность записать значение другого типа
+- позволяет компилятору автоматически проверять корректность использования
 
 ## 4.2. Централизованный реестр — `KeyRegistry`
 
@@ -125,9 +127,19 @@ public static class KeyRegistry
 ```
 
 **Решает требование:**
-- Два проекта не могут создать ключ с одинаковым именем. **(более подробно и конкретизировать вывод)**
-- Гарантирует уникальность ключей.
-- Обеспечивает типобезопасность.
+- Ключевая строка, реализующая уникальность ключей:
+
+```c#
+if (_registry.ContainsKey(name))
+    throw new InvalidOperationException($"Key '{name}' already registered.");
+```
+- Ключевые строки, реализующие типобезопасность:
+
+```c#
+public sealed class TypedKey<T>
+public void Set<T>(TypedKey<T> key, T value)
+public T? Get<T>(TypedKey<T> key)
+```
 
 ## 4.3. Динамический контекст — `DynamicContext`
 
@@ -152,7 +164,7 @@ public sealed class DynamicContext
 }
 ```
 
-**Решает требование:** динамическое хранение через словарь.
+**Решает требование:** динамическое хранение через словарь `private readonly Dictionary<int, object> _data = new();`.
 
 ## 4.4. Базовая сущность — `Entity`
 ```c#
@@ -181,9 +193,15 @@ public static class GameKeys
 ```
 
 **Это выполняет требование:**
-- потребитель может добавить собственные ключи
+- потребитель может добавить собственные ключи `KeyRegistry.Register<int>("Game.Health");`
 - реестр предотвратит конфликт имени
-- ключи типизированы
+```c#
+if (_registry.ContainsKey(name))
+    throw new InvalidOperationException();
+```
+через вызов `KeyRegistry.Register<string>("Game.Owner");`
+- ключи типизированы `TypedKey<int>`, `TypedKey<string>`
+
 
 ## 5.2. Операции — `GameSystems.cs`
 
@@ -201,8 +219,8 @@ public static class GameSystems
 ```
 
 **Выполняет требование:**
-- потребитель может задавать свои операции
-- операции используют данные, которые библиотека не знала
+- потребитель может задавать свои операции `public static void Damage(Entity e, int amount)`
+- операции используют данные, которые библиотека не знала `var hp = e.Context.Get(GameKeys.Health) ?? 0;`
 
 ## 5.3. Демонстрация работы — `Program.cs`
 **больше анализа по каждому пункту вместо вывода пункта 6**
